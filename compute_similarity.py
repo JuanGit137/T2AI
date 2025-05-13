@@ -1,7 +1,4 @@
 import numpy as np
-import skimage.io as io
-import skimage.transform as transform
-import matplotlib.pyplot as plt
 import os
 import json
 import sys
@@ -46,18 +43,12 @@ def calculate_map_simple(similarity_matrix, files, k=10):
     ap_values = []
     class_precisions = defaultdict(list)
     class_recalls = defaultdict(list)
-      
-    # Eliminar esta línea que limita a 100 consultas
-    # max_queries = min(100, len(files))
-    valid_queries = []
     
     # Recoger todas las imágenes con clase conocida como consultas
+    valid_queries = []
     for i in range(len(files)):
         if len(files[i]) > 1:  # Si tiene clase
             valid_queries.append(i)
-            # Eliminar este if que limita a 100
-            # if len(valid_queries) >= max_queries:
-            #     break
     
     if not valid_queries:
         return 0.0, {}
@@ -148,7 +139,6 @@ def calculate_map_simple(similarity_matrix, files, k=10):
 
 def process_dataset_model(dataset, model, force_recompute=False):
     data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'T2images', dataset)
-    image_dir = os.path.join(data_dir, 'images')
     list_of_images = os.path.join(data_dir, 'list_of_images.txt')
     feat_file = os.path.join('data', f'feat_{model}_{dataset}.npy')
     
@@ -211,51 +201,16 @@ def process_dataset_model(dataset, model, force_recompute=False):
         best_iterations = sorted_iterations[:5]
         worst_iterations = sorted_iterations[-5:]
         
-        def visualize_iteration(iteration_data, title, filename):
-            query_idx = iteration_data['query_idx']
-            best_idx = iteration_data['best_idx']
-            query_class = iteration_data['query_class']
-            
-            fig, ax = plt.subplots(1, k+1, figsize=(15, 3))
-            fig.suptitle(f"{title}: {iteration_data['matching_classes']}/{k}")
-            
-            for i, idx in enumerate(best_idx):
-                try:
-                    img_filename = os.path.join(image_dir, files[idx][0])
-                    im = io.imread(img_filename)
-                    im = transform.resize(im, (64, 64))
-                    ax[i].imshow(im)
-                    ax[i].set_axis_off()
-                    
-                    if len(files[idx]) > 1:
-                        img_class = files[idx][1]
-                        match = "✓" if img_class == query_class else "✗"
-                        ax[i].set_title(f"{img_class} {match}")
-                except Exception:
-                    ax[i].text(0.5, 0.5, "Error", ha='center', va='center')
-                    ax[i].set_axis_off()
-            
-            ax[0].patch.set(lw=6, ec='b')
-            ax[0].set_axis_on()
-            
-            plt.tight_layout()
-            img_path = os.path.join(output_dir, filename)
-            plt.savefig(img_path)
-            plt.close()
-            return img_path
-        
         best_image_paths = []
-        for i, iteration_data in enumerate(best_iterations):
-            title = f"TOP {i+1}: Best classification"
+        for i in range(5):
             filename = f"mejor_clasificacion_{i+1}.png"
-            img_path = visualize_iteration(iteration_data, title, filename)
+            img_path = os.path.join(output_dir, filename)
             best_image_paths.append(img_path)
         
         worst_image_paths = []
-        for i, iteration_data in enumerate(worst_iterations):
-            title = f"BOTTOM {i+1}: Peor clasificación"
+        for i in range(5):
             filename = f"peor_clasificacion_{i+1}.png"
-            img_path = visualize_iteration(iteration_data, title, filename)
+            img_path = os.path.join(output_dir, filename)
             worst_image_paths.append(img_path)
         
         try:
@@ -303,6 +258,7 @@ def process_dataset_model(dataset, model, force_recompute=False):
             
             save_results_dict(results_dict)
         
+        print(f"Datos procesados para {dataset}_{model}. Ejecuta 'python imagevis.py' para generar las imágenes.")
         return True
             
     except FileNotFoundError:
@@ -335,3 +291,5 @@ if __name__ == '__main__':
         for dataset in DATASETS:
             for model in MODELS:
                 success = process_dataset_model(dataset, model, force_recompute=args.force)
+                
+    
